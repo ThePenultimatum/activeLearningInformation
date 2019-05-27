@@ -1,7 +1,9 @@
-global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces visitedMat entropy epsilonEntropy T_t;
+global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces visitedMat entropy epsilonEntropy T_t prior posterior;
 mapMat = [];
 totalSpaces = 25*25;
 visitedMat = ones(25,25) / totalSpaces;
+prior = ones(25,25) / totalSpaces;
+posterior = ones(25,25) / totalSpaces;
 measurementLocation = [0, 0];
 doorLocation = [15, 15];
 numUniqueVisited = 0;
@@ -16,14 +18,21 @@ while entropy > epsilonEntropy
     
     %%%% take a measurement x
     
-    x = takeMeasurement();
+    x_i = takeMeasurement();
     
     %%%% update posterior p_x(theta)
     
-    %l_r_x = ;
-    %p_r = getPriorDoor();   
-    %%%%   = Likelihood_theta0(x) * p(theta0) / integral
-    %%%%   (likelihood_theta(x) * p(theta) dtheta
+    p_r_i = getPriorDoor();   
+    if (x == 0)
+        likelihood_i = getLikelihoodNotDoor();
+        p_x_i = 1/totalSpaces;
+    else
+        likelihood_i = getLikelihoodDoor();
+        p_x_i = 1-(1/totalSpaces);
+    end
+    
+    posterior_i = (likelihood_i * p_r_i) / p_x_i;
+    posterior(measurementLocation(1), measurementLocation(2)) = posterior_i;
     
     %%%% recalculate S from posterior
     
@@ -38,6 +47,8 @@ while entropy > epsilonEntropy
     
     %%%% apply input u_i
     
+    prior(measurementLocation(1), measurementLocation(2)) = x;
+    
     measurementLocation = measurementLocation + u_i;
     T_t = [T_t, measurementLocation];
 end
@@ -45,9 +56,17 @@ end
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
 
 function s = entropyBoard()
-  global totalSpaces numUniqueVisited
-  priorDoor = getPriorDoor();
-  s = (totalSpaces - numUniqueVisited) * priorDoor * log2(priorDoor);
+  global totalSpaces numUniqueVisited prior posterior
+  %priorDoor = getPriorDoor();
+  %s = (totalSpaces - numUniqueVisited) * priorDoor * log2(priorDoor);
+  total = 0;
+  for i=1:25
+      for j=1:25
+          ijval = posterior(i, j);
+          total = total + ijval * log2(ijval);
+      end
+  end
+  s = total;
 end
 
 function expDSu = expDSU(u)
@@ -70,13 +89,13 @@ function x = takeMeasurement()
   end
 end
 
-function pn = getPriorNotDoor()
-  pn = 1-(getPriorDoor());
+function pn = getPriorNotDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WHEN CHECKING FOR NON_VISITED SPACE
+  pn = 1-(getPriorDoor(i, j));
 end
 
-function pr = getPriorDoor()
-  global totalSpaces numUniqueVisited;
-  pr = 1/(totalSpaces - numUniqueVisited);
+function pr = getPriorDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WHEN CHECKING FOR NON_VISITED SPACE
+  global prior totalSpaces numUniqueVisited;
+  pr = prior(i, j);%1/(totalSpaces - numUniqueVisited);
 end
 
 function likelihood = getLikelihoodDoor()

@@ -14,12 +14,16 @@ epsilon = 0.1;
 %%%%
 
 i = 0;
-
-while ((dirDeriv(J, eta_i, zeta_i))^2) < epsilon
-    i++;
+%%%% 2 norm is sqrt of (parts squared)
+while sqrt((dirDerivJ(eta_i, zeta_i))^2) < epsilon
+    i = i + 1;
 end
 
 %%%% functions
+
+function dj = dirDerivJ(eta_i, zeta_i)
+  dj = 0;
+end
 
 function xd = xdot(x)
   global b;
