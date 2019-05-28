@@ -1,20 +1,22 @@
-global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces visitedMat entropy epsilonEntropy T_t prior posterior;
+global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces visitedMat entropy epsilonEntropy T_t prior posterior iters valsAtPos;
 mapMat = [];
 totalSpaces = 25*25;
 visitedMat = ones(25,25) / totalSpaces;
 prior = ones(25,25) / totalSpaces;
 posterior = ones(25,25) / totalSpaces;
-measurementLocation = [0, 0];
+measurementLocation = [1, 1];
 doorLocation = [15, 15];
 numUniqueVisited = 0;
 epsilonEntropy = 0.1;
-entropy = 0;
+%entropy = 0;
 
 T_t = measurementLocation;
 
 %%%%
-%entropy = 1000000000;
-while entropy > epsilonEntropy
+entropy = entropyBoard()
+valsAtPos = [];
+iters = 0;
+while iters < 2 %entropy > epsilonEntropy
     
     %%%% take a measurement x
     
@@ -22,7 +24,7 @@ while entropy > epsilonEntropy
     
     %%%% update posterior p_x(theta)
     
-    p_r_i = getPriorDoor();   
+    p_r_i = getPriorDoor(measurementLocation(1), measurementLocation(2));   
     if (x == 0)
         likelihood_i = getLikelihoodNotDoor();
         p_x_i = 1/totalSpaces;
@@ -36,27 +38,94 @@ while entropy > epsilonEntropy
     
     %%%% recalculate S from posterior
     
-    entropy = entropyBoard();
+    entropy_i = entropyBoard();
+    
+    entropy = entropy_i
     
     %%%% calculate control input u_i = argmin over u of E(delta_S(u))
     
     % [0, 0], [0, 1], [1, 0], [-1, 0], [0, -1] are the 5 possible controls
     % u_i
     
-    u_i = [0, 0];
+    u_i = getBestControls();%[0, 0];
     
     %%%% apply input u_i
     
-    prior(measurementLocation(1), measurementLocation(2)) = x;
+    valsAtPos = [valsAtPos, x];
     
-    measurementLocation = measurementLocation + u_i;
+    prior = updatePrior();
+    
+    measurementLocation = measurementLocation + u_i
     T_t = [T_t, measurementLocation];
+    
+    
+    
+    %entropy = 0;
+    iters = iters + 1;
+    prior
 end
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
 
+function p = updatePrior()
+    global numUniqueVisited totalSpaces iters T_t valsAtPos;
+    numUniqueVisited = numUniqueVisited + 1;
+    tmp = ones(25, 25) / (totalSpaces - numUniqueVisited);
+    for i=1:iters
+        pos = T_t(i, :);
+        tmp(pos(1), pos(2)) = valsAtPos(i);
+    end
+    p = tmp;
+end
+
+function us = getBestControls()
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;
+    controlsPotential = [1, 0; 0, 1; 0, -1; -1, 0; 0, 0];
+    bestInd = 1;
+    bestReduction = 0;
+    sameReduction = [];
+    sameInds = [];
+    indices = [];
+    entropyReductions = [];
+    for i=1:5
+        controls_i = controlsPotential(i,:);
+        newPos = measurementLocation + controls_i;
+        if ((newPos(1) > 0) && (newPos(1) < 26) && (newPos(2) > 0) && (newPos(2) < 26))
+            p_t_rj = prior(newPos(1), newPos(2)); %1/(totalSpaces - numUniqueVisited);
+            eds = -1 * entropy * p_t_rj + (1-p_t_rj) * 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5 this  is multiplied by -1....... should this change min vs max?
+            %%%%%%%%%%%%%%%%%%%%%%%%% THIS ADDED TERM ABOVE THAT I AM
+            %%%%%%%%%%%%%%%%%%%%%%%%% MAKING ZERO SHOULD INSTEAD ACCOUNT
+            %%%%%%%%%%%%%%%%%%%%%%%%% FOR THE POTENTIAL NEXT STEPS, SO SEE
+            %%%%%%%%%%%%%%%%%%%%%%%%% WHICH ONES BEYOND THE CURRENT ONE CAN
+            %%%%%%%%%%%%%%%%%%%%%%%%% ACTUALLY HAVE A MOVE OR GET A
+            %%%%%%%%%%%%%%%%%%%%%%%%% REDUCTION
+            indices = [indices, i];
+            entropyReductions(i) = eds;
+            if eds < bestReduction
+                bestInd = i;
+                bestReduction = eds;
+                sameReduction = [];
+            else
+                if eds == bestReduction
+                    sameReduction(i) = i;
+                    sameInds = [sameInds, i-1, i];
+                end
+            end
+        end
+    end
+    if (length(sameReduction) > 0)
+        sameReduction = unique(sameReduction);
+        lengthmat = length(sameInds);
+        randval = sameInds(randperm(lengthmat));
+        bestInd = randval(1);
+    end
+    bestInd
+    entropyReductions
+    us = controlsPotential(bestInd, :);
+end
+
 function s = entropyBoard()
-  global totalSpaces numUniqueVisited prior posterior
+  global posterior;
   %priorDoor = getPriorDoor();
   %s = (totalSpaces - numUniqueVisited) * priorDoor * log2(priorDoor);
   total = 0;
@@ -66,7 +135,7 @@ function s = entropyBoard()
           total = total + ijval * log2(ijval);
       end
   end
-  s = total;
+  s = -1*total;
 end
 
 function expDSu = expDSU(u)
@@ -94,7 +163,7 @@ function pn = getPriorNotDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED
 end
 
 function pr = getPriorDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WHEN CHECKING FOR NON_VISITED SPACE
-  global prior totalSpaces numUniqueVisited;
+  global prior;
   pr = prior(i, j);%1/(totalSpaces - numUniqueVisited);
 end
 
