@@ -13,56 +13,87 @@ epsilonEntropy = 0.1;
 T_t = measurementLocation;
 
 %%%%
-entropy = entropyBoard()
+entropy = entropyBoard();
 valsAtPos = [];
 iters = 0;
-while iters < 2 %entropy > epsilonEntropy
+
+
+
+
+
+
+
+
+
+
+
+while iters < 3 %entropy > epsilonEntropy
     
-    %%%% take a measurement x
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
-    x_i = takeMeasurement();
+    x_i = takeMeasurement(); % 1 or 0 represents the value at the measurementLocation
     
-    %%%% update posterior p_x(theta)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% update posterior p_x(theta)
     
-    p_r_i = getPriorDoor(measurementLocation(1), measurementLocation(2));   
-    if (x == 0)
+    p_r_i = getPriorDoor(measurementLocation(1), measurementLocation(2)); % this is the prob. of the door being at measurementLocation according to the prior
+    
+    % this is the likelihood that the measurement x_i would turn out as the value we measured
+    if (x_i == 1)%0)
         likelihood_i = getLikelihoodNotDoor();
-        p_x_i = 1/totalSpaces;
+        p_x_i = 1/totalSpaces; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ??????????????????????????
     else
         likelihood_i = getLikelihoodDoor();
         p_x_i = 1-(1/totalSpaces);
     end
     
-    posterior_i = (likelihood_i * p_r_i) / p_x_i;
+    posterior_i = (likelihood_i * p_r_i) / p_x_i;                %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
+    
+    
+    
     posterior(measurementLocation(1), measurementLocation(2)) = posterior_i;
     
-    %%%% recalculate S from posterior
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% recalculate S from posterior
     
     entropy_i = entropyBoard();
     
-    entropy = entropy_i
+    entropy = entropy_i;
     
-    %%%% calculate control input u_i = argmin over u of E(delta_S(u))
     
-    % [0, 0], [0, 1], [1, 0], [-1, 0], [0, -1] are the 5 possible controls
-    % u_i
+    
+    
+    %%%%%%%%% EVERYTHING ABOVE SEEMS TO CHECK OUT........... CHECK THAT THE
+    %%%%%%%%% BOARDS ARE BEING UPDATED PROPERLY AND THE WAY THAT THEY
+    %%%%%%%%% SHOULD BE, PRIOR VS POSTERIOR UPDATES
+    
+    
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% calculate control input u_i = argmin over u of E(delta_S(u))
+    
+    % [0, 0], [0, 1], [1, 0], [-1, 0], [0, -1] are the 5 possible controls u_i
     
     u_i = getBestControls();%[0, 0];
     
-    %%%% apply input u_i
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% apply input u_i
     
-    valsAtPos = [valsAtPos, x];
+    valsAtPos = [valsAtPos, x_i];
     
-    prior = updatePrior();
+    prior = posterior %updatePrior();
     
-    measurementLocation = measurementLocation + u_i
+    measurementLocation = measurementLocation + u_i;
     T_t = [T_t, measurementLocation];
     
     
     
     %entropy = 0;
     iters = iters + 1;
-    prior
+    prior(1:5,1:5);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
@@ -119,8 +150,9 @@ function us = getBestControls()
         randval = sameInds(randperm(lengthmat));
         bestInd = randval(1);
     end
-    bestInd
-    entropyReductions
+    bestInd;
+    bestReduction;
+    entropyReductions;
     us = controlsPotential(bestInd, :);
 end
 
