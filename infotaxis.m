@@ -3,8 +3,8 @@ mapMat = [];
 totalSpaces = 25*25;
 prior = ones(25,25) / totalSpaces;
 posterior = ones(25,25) / totalSpaces;
-measurementLocation = [1, 1];
-doorLocation = [15, 15];
+measurementLocation = [20 12];
+doorLocation = [1 1];
 numUniqueVisited = 0;
 epsilonEntropy = 0.1;
 %entropy = 0;
@@ -14,7 +14,9 @@ visited = zeros(25, 25);
 T_t = measurementLocation;
 
 %%%%
+entropies = [];
 entropy = entropyBoard();
+entropies = [entropies, entropy];
 valsAtPos = [];
 iters = 0;
 
@@ -66,6 +68,7 @@ while iters < 1000 %entropy > epsilonEntropy
     entropy_i = entropyBoard();
     
     entropy = entropy_i;
+    entropies = [entropies, entropy];
     
     
     
@@ -101,6 +104,7 @@ end
 
 prior
 T_t
+entropies
 plot(T_t(:,1), T_t(:,2));
 title("Trajectory for Infotaxis")
 xlim([-1 26]); 
@@ -109,6 +113,23 @@ xlabel("x");
 ylabel("y");
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
+
+function esd = getExpectedChangeEntropy(i, j)
+    global prior;
+    currEnt = entropyBoard();
+    % entropy current
+    prob1 = prior(i, j);
+    prob0 = 1-prior(i, j);
+    tmp = prior;
+    
+    % entropy if space is 0
+    %%% use probability from prior that space is 0 and log of that
+    % entropy if space is 1
+    %%% use probability from prior that space is 1 and log of that
+    % expected value from sum of probabilities of getting 0 or 1 times the resultant change in entropy
+    % return that value as esd
+    esd = 100000000000;
+end
 
 function n = sumUniqueVisited()
     global prior visited;
