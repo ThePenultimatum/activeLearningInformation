@@ -1,7 +1,6 @@
-global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces visitedMat entropy epsilonEntropy T_t prior posterior iters valsAtPos;
+global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces entropy epsilonEntropy T_t prior posterior iters valsAtPos visited;
 mapMat = [];
 totalSpaces = 25*25;
-visitedMat = ones(25,25) / totalSpaces;
 prior = ones(25,25) / totalSpaces;
 posterior = ones(25,25) / totalSpaces;
 measurementLocation = [1, 1];
@@ -9,6 +8,8 @@ doorLocation = [15, 15];
 numUniqueVisited = 0;
 epsilonEntropy = 0.1;
 %entropy = 0;
+
+visited = zeros(25, 25);
 
 T_t = measurementLocation;
 
@@ -27,11 +28,12 @@ iters = 0;
 
 
 
-while iters < 3 %entropy > epsilonEntropy
+while iters < 100 %entropy > epsilonEntropy
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
     x_i = takeMeasurement(); % 1 or 0 represents the value at the measurementLocation
+    visited(measurementLocation(1), measurementLocation(2)) = 1;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% update posterior p_x(theta)
     
@@ -56,7 +58,8 @@ while iters < 3 %entropy > epsilonEntropy
     
     
     
-    posterior(measurementLocation(1), measurementLocation(2)) = posterior_i;
+    %posterior(measurementLocation(1), measurementLocation(2)) = posterior_i;
+    posterior = updatePosterior(posterior_i, measurementLocation(1), measurementLocation(2));
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% recalculate S from posterior
     
@@ -84,7 +87,7 @@ while iters < 3 %entropy > epsilonEntropy
     
     valsAtPos = [valsAtPos, x_i];
     
-    prior = posterior %updatePrior();
+    prior = posterior; %updatePrior();
     
     measurementLocation = measurementLocation + u_i;
     T_t = [T_t, measurementLocation];
@@ -96,7 +99,45 @@ while iters < 3 %entropy > epsilonEntropy
     prior(1:5,1:5);
 end
 
+prior
+
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
+
+function n = sumUniqueVisited()
+    global prior visited;
+    sumsofar = 0;
+    for i=1:25
+        for j=1:25
+            if (visited(i,j) == 1)
+                addon = prior(i,j);
+                sumsofar = sumsofar + addon;
+            end
+        end
+    end
+    n = sumsofar;
+end
+
+function n = uniqueVisited()
+    global visited;
+    n = sum(sum(visited));
+end
+
+function p = updatePosterior(posterior_i, r, c) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to account for the existant spots when making the uniform dist. over the unvisited spots
+    global totalSpaces prior visited;
+    numUniqueVisited = uniqueVisited() + 1; %numUniqueVisited + 1;
+    sumOfAlreadyVisited = sumUniqueVisited(); %0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    multiplier =  ((1-sumOfAlreadyVisited)/(totalSpaces - numUniqueVisited));
+    tmp = ones(25, 25) * multiplier;
+    for i=1:25
+        for j=1:25
+            if (visited(i,j) == 1)
+                tmp(i,j) = prior(i,j);
+            end
+        end
+    end
+    tmp(r, c) = posterior_i;
+    p = tmp;
+end
 
 function p = updatePrior()
     global numUniqueVisited totalSpaces iters T_t valsAtPos;
