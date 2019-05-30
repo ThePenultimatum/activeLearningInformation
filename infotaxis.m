@@ -28,7 +28,7 @@ iters = 0;
 
 
 
-while iters < 100 %entropy > epsilonEntropy
+while iters < 1000 %entropy > epsilonEntropy
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
@@ -90,7 +90,7 @@ while iters < 100 %entropy > epsilonEntropy
     prior = posterior; %updatePrior();
     
     measurementLocation = measurementLocation + u_i;
-    T_t = [T_t, measurementLocation];
+    T_t = [T_t; measurementLocation];
     
     
     
@@ -100,6 +100,13 @@ while iters < 100 %entropy > epsilonEntropy
 end
 
 prior
+T_t
+plot(T_t(:,1), T_t(:,2));
+title("Trajectory for Infotaxis")
+xlim([-1 26]); 
+ylim([-1 26]);
+xlabel("x");
+ylabel("y");
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
 
@@ -153,18 +160,27 @@ end
 function us = getBestControls()
     global entropy measurementLocation prior totalSpaces numUniqueVisited;
     controlsPotential = [1, 0; 0, 1; 0, -1; -1, 0; 0, 0];
+    tmp = [];
+    for row=1:5
+        controls_itry = controlsPotential(row,:);
+        newPostry = measurementLocation + controls_itry;
+        if ((newPostry(1) > 0) && (newPostry(1) < 26) && (newPostry(2) > 0) && (newPostry(2) < 26))
+            tmp = [tmp; controls_itry(1) controls_itry(2)];
+        end
+    end
+    controlsPotential = tmp;
     bestInd = 1;
     bestReduction = 0;
     sameReduction = [];
     sameInds = [];
     indices = [];
     entropyReductions = [];
-    for i=1:5
+    for i=1:length(controlsPotential(:,1))%5
         controls_i = controlsPotential(i,:);
         newPos = measurementLocation + controls_i;
         if ((newPos(1) > 0) && (newPos(1) < 26) && (newPos(2) > 0) && (newPos(2) < 26))
             p_t_rj = prior(newPos(1), newPos(2)); %1/(totalSpaces - numUniqueVisited);
-            eds = -1 * entropy * p_t_rj + (1-p_t_rj) * 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5 this  is multiplied by -1....... should this change min vs max?
+            eds = -1 * entropy * p_t_rj + (1-p_t_rj) * 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% this  is multiplied by -1....... should this change min vs max?
             %%%%%%%%%%%%%%%%%%%%%%%%% THIS ADDED TERM ABOVE THAT I AM
             %%%%%%%%%%%%%%%%%%%%%%%%% MAKING ZERO SHOULD INSTEAD ACCOUNT
             %%%%%%%%%%%%%%%%%%%%%%%%% FOR THE POTENTIAL NEXT STEPS, SO SEE
@@ -172,7 +188,7 @@ function us = getBestControls()
             %%%%%%%%%%%%%%%%%%%%%%%%% ACTUALLY HAVE A MOVE OR GET A
             %%%%%%%%%%%%%%%%%%%%%%%%% REDUCTION
             indices = [indices, i];
-            entropyReductions(i) = eds;
+            entropyReductions = [entropyReductions, eds];
             if eds < bestReduction
                 bestInd = i;
                 bestReduction = eds;
