@@ -1,28 +1,92 @@
-global T b x0 sigma mu epsilon;
+global T b x0 sigma mu epsilon resolution trajectory L;
 
 T = 100;
+resolution = 1;
+dt = 1/resolution;
 b = 0;
 
 x0 = [0; 1];
 
-sigma = Diag(2,2);
+sigma = [1 0; 0 1];
 
 mu = 0;
+L = 2;
 
 epsilon = 0.1;
 
+K = 10;
+
+trajectory = [0; 1];
+currTraj = x0;
+for i=1:T*resolution
+    next = currTraj + dt * xdot(currTraj);
+    trajectory(:,i) = next;
+    currTraj = next;
+end
+
 %%%%
 
-i = 0;
+%i = 0;
 %%%% 2 norm is sqrt of (parts squared)
-while sqrt((dirDerivJ(eta_i, zeta_i))^2) < epsilon
-    i = i + 1;
+
+gammaKs = []; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% is this a matrix instead of a vector?????????????
+for ki=1:K
+    for kj=1:K
+        %newone = getGammaK(k);
+        %gammaKs = [gammaKs; newone];
+        newone = getGammaKiKj(ki, kj);
+        gammaKs(ki,kj) = newone;
+    end
+end
+
+for t=1:((T/dt) + 1)
+    t
+    xs = trajectory(:,t);
+    for xk=1:K
+        for yk=1:K
+            ks = [xk; yk];
+            gammaIJ = gammaKs(xk, yk);
+            h = getHK(ks);
+            fkx = getFkx(xs, ks, h);
+            ck = getCks;
+            phik = [];
+        end
+    end
 end
 
 %%%% functions
 
-function dj = dirDerivJ(eta_i, zeta_i)
-  dj = 0;
+function ck = getCks()
+    global T
+    ck = 0;%(1/T) *
+end
+
+function fkx = getFkx(x, k, h)
+    global L
+    1;
+    %h = getHK(k);
+    %L = 1;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%????????????????????????????/
+    res = [];
+    normalizer = 1/h;
+    resi = normalizer * 1;
+    for i=1:2
+        ki = k(i);
+        resi = resi * cos(k(i) * pi * x(i) / L);
+    end
+    fkx = 0;
+end
+
+function hk = getHK(ks)
+    global L 
+    fun = @(x1,x2) (cos(ks(1) * pi * x1 / L).^2).*((cos(ks(2) * pi * x2 / L)).^2);
+    hk = sqrt(integral2(fun, 0, 2, 0, 2));
+end
+
+function g = getGammaKiKj(i, j) 
+    %%%%%%%%%%% this assumes that k is a column vector input or a scalar
+    usek = [i; j];
+    n = 2;
+    g = (1+sqrt(transpose(usek)*usek)^2)^(-1*((n+1)/2));
 end
 
 function xd = xdot(x)
@@ -31,6 +95,7 @@ function xd = xdot(x)
 end
 
 function phi_x = phi(x)
+  global sigma mu;
   muhere = [0; 0]; % same shape as x
-  phi_x = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*transpose(x-muhere)*inv(sigma)*(x-muhere));
+  phi_x = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*transpose(x-mu)*inv(sigma)*(x-mu));
 end
