@@ -1,4 +1,4 @@
-global T b x0 sigma mu epsilon resolution trajectory L;
+global T b x0 sigma mu epsilon resolution trajectory L dt;
 
 T = 100;
 resolution = 1;
@@ -39,26 +39,29 @@ for ki=1:K
     end
 end
 
-for t=1:((T/dt) + 1)
-    t
-    xs = trajectory(:,t);
+%for t=1:((T/dt) + 1)
+%    t
+%    xs = trajectory(:,t);
     for xk=1:K
         for yk=1:K
             ks = [xk; yk];
             gammaIJ = gammaKs(xk, yk);
             h = getHK(ks);
-            fkx = getFkx(xs, ks, h);
-            ck = getCks;
+            fkx = getFkx(trajectory, ks, h)
+            ck = getCks(fkx);
             phik = [];
         end
     end
-end
+%end
 
 %%%% functions
 
-function ck = getCks()
-    global T
-    ck = 0;%(1/T) *
+function ck = getCks(fkx)
+    global T dt;
+    fkx
+    %fun = @(t) fkx(t);
+    %ck = integral(fun, 1, T/dt+1); %0;%(1/T) *
+    ck = (1/T) * sum(fkx(1,:));
 end
 
 function fkx = getFkx(x, k, h)
@@ -69,11 +72,17 @@ function fkx = getFkx(x, k, h)
     res = [];
     normalizer = 1/h;
     resi = normalizer * 1;
-    for i=1:2
-        ki = k(i);
-        resi = resi * cos(k(i) * pi * x(i) / L);
-    end
-    fkx = 0;
+    
+    x1part = cos(k(1) * pi * x(1,:) / L);
+    x2part = cos(k(1) * pi * x(2,:) / L);
+    tot = resi * (x1part .* x2part);
+    %for i=1:2
+    %    ki = k(i);
+    %    resi = resi * cos(k(i) * pi * x(:,i) / L);
+    fkx = tot;
+    %end
+    
+    %fkx = 0;
 end
 
 function hk = getHK(ks)
