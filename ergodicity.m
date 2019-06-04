@@ -5,6 +5,9 @@ T = 100;
 resolution = 1;
 dt = 1/resolution;
 b = 0;
+bmax = 2;
+numBsamples = 15;
+
 
 %x0 = [0; 1];
 x0 = [1; 2];
@@ -14,22 +17,23 @@ sigma = [1 0; 0 1];
 mu = 1;%[1; 1];%0;
 L = 2;%2;
 
-epsilon = 0.1;
+%epsilon = 0.1;
 
 K = 10;
 
 rowres = 10;
 colres = 10;
 
-trajectory = [0; 1];
-currTraj = x0;
-for i=1:T*resolution
-    next = currTraj + dt * xdot(currTraj);
-    trajectory(:,i) = next;
-    currTraj = next;
-end
-[t, x] = ode45(@(t,x) [0 1; -1 -b]*x, linspace(0,100,101), x0);
-trajectory = x;
+%trajectory = [0; 1];
+%currTraj = x0;
+%for i=1:T*resolution
+%    next = currTraj + dt * xdot(currTraj);
+%    trajectory(:,i) = next;
+%    currTraj = next;
+%end
+% end
+% [t, x] = ode45(@(t,x) [0 1; -1 -b]*x, linspace(0,100, 101), x0);
+% trajectory = x;
 
 %%%%
 
@@ -38,7 +42,7 @@ trajectory = x;
 
 gammaKs = []; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% is this a matrix instead of a vector?????????????
 for ki=0:K
-    for kj=1:K
+    for kj=0:K
         %newone = getGammaK(k);
         %gammaKs = [gammaKs; newone];
         newone = getGammaKiKj(ki, kj);
@@ -58,9 +62,10 @@ phix = phi();%(trajectory);
 %    t
 %    xs = trajectory(:,t);
 
-bsToTry = linspace(0,2,30);
+bsToTry = linspace(0,bmax,numBsamples);
 bsTried = [];
 epsilonsRes = [];
+epsilonProgress = [];
 
 for i=1:(length(bsToTry))
     
@@ -68,7 +73,7 @@ for i=1:(length(bsToTry))
     bsTried(i) = b;
     
     
-    [t, x] = ode45(@(t,x) [0 1; -1 -b]*x, linspace(0,100,101), x0);
+    [t, x] = ode45(@(t,x) [0 1; -1 -b]*x, linspace(0,T,T+1), x0);%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     trajectory = x;
     
     sumSoFar = 0;
@@ -89,11 +94,12 @@ for i=1:(length(bsToTry))
             ck = getCks(fkx);
             cks(xk+1, yk+1) = ck;
             %
-            phik = getPhik(ks);
+            phik = getPhik(ks, h);
             phiks(xk+1, yk+1) = phik;
             %
             %phik = getPhik(fkx);
-            sumSoFar = sumSoFar + gammaIJ * (abs(ck - phik))^2;
+            sumSoFar = sumSoFar + gammaIJ * (norm(ck - phik))^2;
+            epsilonProgress(xk+1, yk+1) = sumSoFar;
         end
     end
     
@@ -102,9 +108,16 @@ for i=1:(length(bsToTry))
 end
 %end
 
+
+plot(bsTried, epsilonsRes);
+title("Epsilon vs b");
+xlim([0 bmax]);
+xlabel("b");
+ylabel("epsilon");
+
 %%%% functions
 
-function pkx = getPhik(ks)%(fkx)
+function pkx = getPhik(ks, hk)%(fkx)
     global phix rowres colres L;
     %phix;
     %fkx;
@@ -117,12 +130,12 @@ function pkx = getPhik(ks)%(fkx)
         for b=0:(colres+1)
             drowab = drow * a;
             dcolab = dcol * b;
-            elem = cos(ks(1)*pi*drowab/L) * cos(ks(2)*pi*dcolab/L);
+            elem = (1/hk)*cos(ks(1)*pi*drowab/L) * cos(ks(2)*pi*dcolab/L);
             sumsofar = sumsofar + elem;
         end
     end
     
-    pkx = sumsofar;
+    pkx = phix(ks(1)+1, ks(2)+1)*sumsofar;%/(colres*rowres);
 end
 
 function ck = getCks(fkx)
@@ -146,14 +159,7 @@ function fkx = getFkx(x, k, h)
     x1part = cos(k(1) * pi * x(1,:) / L);
     x2part = cos(k(2) * pi * x(2,:) / L);
     tot = resi * (x1part .* x2part);
-    %tot = [x1part; x2part];
-    %for i=1:2
-    %    ki = k(i);
-    %    resi = resi * cos(k(i) * pi * x(:,i) / L);
     fkx = tot;
-    %end
-    
-    %fkx = 0;
 end
 
 function hk = getHK(ks)
@@ -166,23 +172,12 @@ function g = getGammaKiKj(i, j)
     %%%%%%%%%%% this assumes that k is a column vector input or a scalar
     usek = [i; j];
     n = 2;
-    g = (1+sqrt(transpose(usek)*usek)^2)^(-1*((n+1)/2));
-end
-
-function xd = xdot(x)
-  global b;
-  xd = [0 1; -1 -b] * x;
+    g = (1+norm(usek)^2)^(-1*((n+1)/2));
 end
 
 function phi_x = phi()
   global sigma mu L K;
-  %muhere = [0; 0]; % same shape as x
-  %-0.5*transpose(x-mu)*inv(sigma)*(x-mu)
-  %exp(-0.5*transpose(x-mu)*inv(sigma)*(x-mu))
   newk = K + 1;
   xval = [linspace(0, L, newk); linspace(0, L, newk)];
   phi_x = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*transpose(xval-mu)*inv(sigma)*(xval-mu));
-  %phi_x1 = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*(x(1,:)-mu)*1*(transpose(x(1,:))-mu));
-  %phi_x2 = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*(x(2,:)-mu)*1*(transpose(x(2,:))-mu));
-  %phi_x = [phi_x1; phi_x2];
 end
