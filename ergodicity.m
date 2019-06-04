@@ -1,12 +1,12 @@
 clear;
 global T b x0 sigma mu epsilon resolution trajectory L dt phix K rowres colres;
 
-T = 100;
+T = 1000;
 resolution = 1;
 dt = 1/resolution;
 b = 0;
 bmax = 2;
-numBsamples = 15;
+numBsamples = 100;
 
 
 %x0 = [0; 1];

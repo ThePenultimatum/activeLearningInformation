@@ -1,10 +1,11 @@
+clear;
 global mapMat measurementLocation doorLocation numUniqueVisited totalSpaces entropy epsilonEntropy T_t prior posterior iters valsAtPos visited;
 mapMat = [];
 totalSpaces = 25*25;
 prior = ones(25,25) / totalSpaces;
 posterior = ones(25,25) / totalSpaces;
-measurementLocation = [20 12];
-doorLocation = [1 1];
+measurementLocation = [round(rand() * 25) round(rand() * 25)];
+doorLocation = [round(rand() * 25) round(rand() * 25)];
 numUniqueVisited = 0;
 epsilonEntropy = 0.1;
 %entropy = 0;
@@ -30,7 +31,7 @@ iters = 0;
 
 
 
-while iters < 1000 %entropy > epsilonEntropy
+while entropy > 9 %< 5 %entropy > epsilonEntropy
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
@@ -43,44 +44,20 @@ while iters < 1000 %entropy > epsilonEntropy
     
     % this is the likelihood that the measurement x_i would turn out as the value we measured
     if (x_i == 1)%0)
-        likelihood_i = getLikelihoodNotDoor();
-        p_x_i = 1/totalSpaces; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ??????????????????????????
+        likelihood_i = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2));
     else
-        likelihood_i = getLikelihoodDoor();
-        p_x_i = 1-(1/totalSpaces);
+        likelihood_i = getLikelihoodDoor(measurementLocation(1), measurementLocation(2));
     end
     
-    posterior_i = (likelihood_i * p_r_i) / p_x_i;                %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix%%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    %%%%%%%%%%%%%%%% ????? I need to update the posterior entire matrix
-    
-    
-    
-    %posterior(measurementLocation(1), measurementLocation(2)) = posterior_i;
-    posterior = updatePosterior(posterior_i, measurementLocation(1), measurementLocation(2));
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% recalculate S from posterior
+    posterior_i = (prior .* likelihood_i); %(likelihood_i * p_r_i) / p_x_i;                %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    posterior_i = posterior_i ./ (sum(sum(posterior_i)));
+    posterior = posterior_i;
+    prior = posterior_i;
     
     entropy_i = entropyBoard();
     
     entropy = entropy_i;
     entropies = [entropies, entropy];
-    
-    
-    
-    
-    %%%%%%%%% EVERYTHING ABOVE SEEMS TO CHECK OUT........... CHECK THAT THE
-    %%%%%%%%% BOARDS ARE BEING UPDATED PROPERLY AND THE WAY THAT THEY
-    %%%%%%%%% SHOULD BE, PRIOR VS POSTERIOR UPDATES
-    
-    
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% calculate control input u_i = argmin over u of E(delta_S(u))
     
     % [0, 0], [0, 1], [1, 0], [-1, 0], [0, -1] are the 5 possible controls u_i
     
@@ -90,46 +67,27 @@ while iters < 1000 %entropy > epsilonEntropy
     
     valsAtPos = [valsAtPos, x_i];
     
-    prior = posterior; %updatePrior();
+    prior = posterior;
     
     measurementLocation = measurementLocation + u_i;
     T_t = [T_t; measurementLocation];
     
     
     
-    %entropy = 0;
     iters = iters + 1;
-    prior(1:5,1:5);
 end
 
 prior
 T_t
 entropies
 plot(T_t(:,1), T_t(:,2));
-title("Trajectory for Infotaxis")
+title("Trajectory for Infotaxis");
 xlim([-1 26]); 
 ylim([-1 26]);
 xlabel("x");
 ylabel("y");
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
-
-function esd = getExpectedChangeEntropy(i, j)
-    global prior;
-    currEnt = entropyBoard();
-    % entropy current
-    prob1 = prior(i, j);
-    prob0 = 1-prior(i, j);
-    tmp = prior;
-    
-    % entropy if space is 0
-    %%% use probability from prior that space is 0 and log of that
-    % entropy if space is 1
-    %%% use probability from prior that space is 1 and log of that
-    % expected value from sum of probabilities of getting 0 or 1 times the resultant change in entropy
-    % return that value as esd
-    esd = 100000000000;
-end
 
 function n = sumUniqueVisited()
     global prior visited;
@@ -148,34 +106,6 @@ end
 function n = uniqueVisited()
     global visited;
     n = sum(sum(visited));
-end
-
-function p = updatePosterior(posterior_i, r, c) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% need to account for the existant spots when making the uniform dist. over the unvisited spots
-    global totalSpaces prior visited;
-    numUniqueVisited = uniqueVisited() + 1; %numUniqueVisited + 1;
-    sumOfAlreadyVisited = sumUniqueVisited(); %0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    multiplier =  ((1-sumOfAlreadyVisited)/(totalSpaces - numUniqueVisited));
-    tmp = ones(25, 25) * multiplier;
-    for i=1:25
-        for j=1:25
-            if (visited(i,j) == 1)
-                tmp(i,j) = prior(i,j);
-            end
-        end
-    end
-    tmp(r, c) = posterior_i;
-    p = tmp;
-end
-
-function p = updatePrior()
-    global numUniqueVisited totalSpaces iters T_t valsAtPos;
-    numUniqueVisited = numUniqueVisited + 1;
-    tmp = ones(25, 25) / (totalSpaces - numUniqueVisited);
-    for i=1:iters
-        pos = T_t(i, :);
-        tmp(pos(1), pos(2)) = valsAtPos(i);
-    end
-    p = tmp;
 end
 
 function us = getBestControls()
@@ -201,13 +131,7 @@ function us = getBestControls()
         newPos = measurementLocation + controls_i;
         if ((newPos(1) > 0) && (newPos(1) < 26) && (newPos(2) > 0) && (newPos(2) < 26))
             p_t_rj = prior(newPos(1), newPos(2)); %1/(totalSpaces - numUniqueVisited);
-            eds = -1 * entropy * p_t_rj + (1-p_t_rj) * 0; %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% this  is multiplied by -1....... should this change min vs max?
-            %%%%%%%%%%%%%%%%%%%%%%%%% THIS ADDED TERM ABOVE THAT I AM
-            %%%%%%%%%%%%%%%%%%%%%%%%% MAKING ZERO SHOULD INSTEAD ACCOUNT
-            %%%%%%%%%%%%%%%%%%%%%%%%% FOR THE POTENTIAL NEXT STEPS, SO SEE
-            %%%%%%%%%%%%%%%%%%%%%%%%% WHICH ONES BEYOND THE CURRENT ONE CAN
-            %%%%%%%%%%%%%%%%%%%%%%%%% ACTUALLY HAVE A MOVE OR GET A
-            %%%%%%%%%%%%%%%%%%%%%%%%% REDUCTION
+            eds = entropy * p_t_rj + (1-p_t_rj) * 1;
             indices = [indices, i];
             entropyReductions = [entropyReductions, eds];
             if eds < bestReduction
@@ -229,15 +153,13 @@ function us = getBestControls()
         bestInd = randval(1);
     end
     bestInd;
-    bestReduction;
-    entropyReductions;
+    bestReduction
+    entropyReductions
     us = controlsPotential(bestInd, :);
 end
 
 function s = entropyBoard()
   global posterior;
-  %priorDoor = getPriorDoor();
-  %s = (totalSpaces - numUniqueVisited) * priorDoor * log2(priorDoor);
   total = 0;
   for i=1:25
       for j=1:25
@@ -248,18 +170,13 @@ function s = entropyBoard()
   s = -1*total;
 end
 
-function expDSu = expDSU(u)
-  u;
-  expDSu = 0;
-end
-
 function x = takeMeasurement()
   global measurementLocation doorLocation;
   if ((measurementLocation(1) == doorLocation(1)) && (measurementLocation(2) == doorLocation(2)))
       x = 1;
   else
       r = rand();
-      l = getLikelihoodDoor();
+      l = getLikelihoodDoor(measurementLocation(1), measurementLocation(2));
       if (r < l)
           x = 1;
       else
@@ -277,26 +194,84 @@ function pr = getPriorDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WH
   pr = prior(i, j);%1/(totalSpaces - numUniqueVisited);
 end
 
-function likelihood = getLikelihoodDoor()
-  global doorLocation measurementLocation;
-  %global mapMat measurementLocation doorLocation;
-  rowdiff = abs(doorLocation(1) - measurementLocation(1));
-  coldiff = abs(doorLocation(2) - measurementLocation(2));
-  if ((rowdiff >= coldiff) && (rowdiff < 4))
-      likelihood = 1/(rowdiff + 1);
-  else
-      likelihood = 0.01;
-  end
+% function likelihood = getLikelihoodDoor()
+%   global doorLocation measurementLocation;
+%   %global mapMat measurementLocation doorLocation;
+%   rowdiff = abs(doorLocation(1) - measurementLocation(1));
+%   coldiff = abs(doorLocation(2) - measurementLocation(2));
+%   if ((rowdiff >= coldiff) && (rowdiff < 4))
+%       likelihood = 1/(rowdiff + 1);
+%   else
+%       likelihood = 0.01;
+%   end
+% end
+
+% function likelihood = getLikelihoodNotDoor()
+%   global doorLocation measurementLocation;
+%   %global mapMat measurementLocation doorLocation;
+%   rowdiff = abs(doorLocation(1) - measurementLocation(1));
+%   coldiff = abs(doorLocation(2) - measurementLocation(2));
+%   if ((rowdiff >= coldiff) && (rowdiff < 4))
+%       likelihood = 1-(1/(rowdiff + 1));
+%   else
+%       likelihood = 0.99;
+%   end
+% end
+
+function l = getLikelihoodDoor(r, c)
+    tmp = ones(25, 25);
+    tmp(r,c) = 1;
+    for i=0:3
+        if (((r-i) > 0) && ((r+i)<26))
+            for j=0:3
+                if (((j-i) > 0) && ((j+i)<26))
+                    if (i == 3)
+                        tmp(r-i, j) = 1/4;
+                        tmp(r+i, j) = 1/4;
+                    end
+                    if ((i == 2) && ((j > 1) && (j < 7)))
+                        tmp(r-i, j) = 1/3;
+                        tmp(r+i, j) = 1/3;
+                    end
+                    if ((i == 1) && ((j > 2) && (j < 6)))
+                        tmp(r-i, j) = 1/2;
+                        tmp(r+i, j) = 1/2;
+                    end
+                    if ((i == 0) && (j == 0))
+                        tmp(r,c) = 1;
+                    end
+                end
+            end
+        end
+    end
+    l = tmp;
 end
 
-function likelihood = getLikelihoodNotDoor()
-  global doorLocation measurementLocation;
-  %global mapMat measurementLocation doorLocation;
-  rowdiff = abs(doorLocation(1) - measurementLocation(1));
-  coldiff = abs(doorLocation(2) - measurementLocation(2));
-  if ((rowdiff >= coldiff) && (rowdiff < 4))
-      likelihood = 1-(1/(rowdiff + 1));
-  else
-      likelihood = 0.99;
-  end
+function l = getLikelihoodNotDoor(r, c)
+    tmp = ones(25, 25);
+    tmp(r,c) = 1;
+    for i=0:3
+        if (((r-i) > 0) && ((r+i)<26))
+            for j=0:3
+                if (((j-i) > 0) && ((j+i)<26))
+                    if (i == 3)
+                        tmp(r-i, j) = 3/4;
+                        tmp(r+i, j) = 3/4;
+                    end
+                    if ((i == 2) && ((j > 1) && (j < 7)))
+                        tmp(r-i, j) = 2/3;
+                        tmp(r+i, j) = 2/3;
+                    end
+                    if ((i == 1) && ((j > 2) && (j < 6)))
+                        tmp(r-i, j) = 1/2;
+                        tmp(r+i, j) = 1/2;
+                    end
+                    if ((i == 0) && (j == 0))
+                        tmp(r,c) = 0;
+                    end
+                end
+            end
+        end
+    end
+    l = tmp;
 end
