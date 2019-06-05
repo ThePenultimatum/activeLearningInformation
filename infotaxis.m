@@ -38,17 +38,14 @@ while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     visited(measurementLocation(1), measurementLocation(2)) = 1;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% update posterior p_x(theta)
-    
-    p_r_i = getPriorDoor(measurementLocation(1), measurementLocation(2)); % this is the prob. of the door being at measurementLocation according to the prior
-    
     % this is the likelihood that the measurement x_i would turn out as the value we measured
-    if (x_i == 1)%0)
+    if (x_i == 0)
         likelihood_i = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2));
     else
         likelihood_i = getLikelihoodDoor(measurementLocation(1), measurementLocation(2));
     end
     
-    posterior_i = (prior .* likelihood_i); %(likelihood_i * p_r_i) / p_x_i;                %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    posterior_i = (prior .* likelihood_i);
     posterior_i = posterior_i ./ (sum(sum(posterior_i)));
     posterior = posterior_i;
     prior = posterior_i;
@@ -77,7 +74,7 @@ while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
 end
 
 prior
-T_t
+T_t;
 entropies;
 plot(T_t(:,1), T_t(:,2)); %%%%%%%%%%%%%%%%%%%%%% Plotting like x = rows, y = cols
 title("Trajectory for Infotaxis");
@@ -148,8 +145,8 @@ function us = getBestControls()
     expEntDiffRight = probRight1 * (entropy - entropyRight1) + probRight0 * (entropy - entropyRight0);
     expEntDiffStay = probStay1 * (entropy - entropyStay1) + probStay0 * (entropy - entropyStay0);
     
-    res = [expEntDiffLeft, expEntDiffDown, expEntDiffUp, expEntDiffRight, expEntDiffStay]
-    [best, ind] = max(res)
+    res = [expEntDiffLeft, expEntDiffDown, expEntDiffUp, expEntDiffRight, expEntDiffStay];
+    [best, ind] = max(res);
     controlsPotential = [-1, 0; 0, -1; 0, 1; 1, 0; 0, 0];
     
     us = controlsPotential(ind,:);    
@@ -234,7 +231,11 @@ function s = entropyBoard()
   for i=1:25
       for j=1:25
           ijval = posterior(i, j);
-          total = total + ijval * log2(ijval);
+          if (ijval == 0)
+              total = total;
+          else
+              total = total + ijval * log2(ijval);
+          end
       end
   end
   s = -1*total;
@@ -246,7 +247,11 @@ function s = entropyOfBoard(b)
   for i=1:25
       for j=1:25
           ijval = b(i, j);
-          total = total + ijval * log2(ijval);
+          if (ijval == 0)
+              total = total;
+          else
+              total = total + ijval * log2(ijval);
+          end
       end
   end
   s = -1*total;
@@ -258,13 +263,39 @@ function x = takeMeasurement()
       x = 1;
   else
       r = rand();
-      l = getLikelihoodDoor(measurementLocation(1), measurementLocation(2));
+      l = getLikelihoodDoorMeasurement(measurementLocation(1), measurementLocation(2))
       if (r < l)
-          x = 1;
+          x = 1
       else
-          x = 0;
+          x = 0
       end
   end
+end
+
+function l = getLikelihoodDoorMeasurement(r,c)
+    global doorLocation;
+    rowdiff = abs(r - doorLocation(1));
+    coldiff = abs(c - doorLocation(2));
+    diff = coldiff - rowdiff;
+    if ((diff <= 0) && (rowdiff < 4))
+        if (rowdiff == 3)
+            l = 1/4;
+        else
+            if (rowdiff == 2)
+                l = 1/3;
+            else
+                if (rowdiff == 1)
+                    l = 1/2;
+                else
+                    if (rowdiff == 0)
+                        l = 1;
+                    end
+                end
+            end
+        end
+    else
+        l = 1/100;
+    end
 end
 
 function pn = getPriorNotDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WHEN CHECKING FOR NON_VISITED SPACE
@@ -281,7 +312,7 @@ function pr = getPriorDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WH
 end
 
 function l = getLikelihoodDoor(r, c)
-    tmp = ones(25, 25);
+    tmp = ones(25, 25)./100;
     tmp(r,c) = 1;
     for i=0:3
         if (((r-i) > 0) && ((r+i)<26))
@@ -316,7 +347,7 @@ function l = getLikelihoodDoor(r, c)
 end
 
 function l = getLikelihoodNotDoor(r, c)
-    tmp = ones(25, 25);
+    tmp = ones(25, 25).*99./100;
     tmp(r,c) = 1;
     for i=0:3
         if (((r-i) > 0) && ((r+i)<26))
