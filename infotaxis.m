@@ -4,11 +4,10 @@ mapMat = [];
 totalSpaces = 25*25;
 prior = ones(25,25) / totalSpaces;
 posterior = ones(25,25) / totalSpaces;
-measurementLocation = [round(rand() * 25) round(rand() * 25)];
-doorLocation = [round(rand() * 25) round(rand() * 25)];
+measurementLocation = [round(rand()*24)+1 round(rand()*24)+1];
+doorLocation = [round(rand() * 24)+1 round(rand() * 24)+1];
 numUniqueVisited = 0;
 epsilonEntropy = 0.1;
-%entropy = 0;
 
 visited = zeros(25, 25);
 
@@ -31,7 +30,7 @@ iters = 0;
 
 
 
-while entropy > 9 %< 5 %entropy > epsilonEntropy
+while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
@@ -79,8 +78,8 @@ end
 
 prior
 T_t
-entropies
-plot(T_t(:,1), T_t(:,2));
+entropies;
+plot(T_t(:,1), T_t(:,2)); %%%%%%%%%%%%%%%%%%%%%% Plotting like x = rows, y = cols
 title("Trajectory for Infotaxis");
 xlim([-1 26]); 
 ylim([-1 26]);
@@ -109,53 +108,124 @@ function n = uniqueVisited()
 end
 
 function us = getBestControls()
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;  
+    
+    %%%% below assumes first data part represents x while second represents
+    %%%% y in plot
+    entropyLeft1 = getEntLeft(1);
+    entropyLeft0 = getEntLeft(0);
+    
+    entropyDown1 = getEntDown(1);
+    entropyDown0 = getEntDown(0);
+    
+    entropyUp1 = getEntUp(1);
+    entropyUp0 = getEntUp(0);
+    
+    entropyRight1 = getEntRight(1);
+    entropyRight0 = getEntRight(0);
+    
+    entropyStay1 = getEntStay(1);
+    entropyStay0 = getEntStay(0);
+    
+    probLeft1 = getPriorDoor(measurementLocation(1)-1, measurementLocation(2));
+    probLeft0 = getPriorNotDoor(measurementLocation(1)-1, measurementLocation(2));
+    
+    probDown1 = getPriorDoor(measurementLocation(1), measurementLocation(2)-1);
+    probDown0 = getPriorNotDoor(measurementLocation(1), measurementLocation(2)-1);
+    
+    probUp1 = getPriorDoor(measurementLocation(1), measurementLocation(2)+1);
+    probUp0 = getPriorNotDoor(measurementLocation(1), measurementLocation(2)+1);
+    
+    probRight1 = getPriorDoor(measurementLocation(1)+1, measurementLocation(2));
+    probRight0 = getPriorNotDoor(measurementLocation(1)+1, measurementLocation(2));
+    
+    probStay1 = getPriorDoor(measurementLocation(1), measurementLocation(2));
+    probStay0 = getPriorNotDoor(measurementLocation(1), measurementLocation(2));
+    
+    expEntDiffLeft = probLeft1 * (entropy - entropyLeft1) + probLeft0 * (entropy - entropyLeft0);
+    expEntDiffDown = probDown1 * (entropy - entropyDown1) + probDown0 * (entropy - entropyDown0);
+    expEntDiffUp = probUp1 * (entropy - entropyUp1) + probUp0 * (entropy - entropyUp0);
+    expEntDiffRight = probRight1 * (entropy - entropyRight1) + probRight0 * (entropy - entropyRight0);
+    expEntDiffStay = probStay1 * (entropy - entropyStay1) + probStay0 * (entropy - entropyStay0);
+    
+    res = [expEntDiffLeft, expEntDiffDown, expEntDiffUp, expEntDiffRight, expEntDiffStay]
+    [best, ind] = max(res)
+    controlsPotential = [-1, 0; 0, -1; 0, 1; 1, 0; 0, 0];
+    
+    us = controlsPotential(ind,:);    
+end
+
+function h = getEntLeft(data)
     global entropy measurementLocation prior totalSpaces numUniqueVisited;
-    controlsPotential = [1, 0; 0, 1; 0, -1; -1, 0; 0, 0];
-    tmp = [];
-    for row=1:5
-        controls_itry = controlsPotential(row,:);
-        newPostry = measurementLocation + controls_itry;
-        if ((newPostry(1) > 0) && (newPostry(1) < 26) && (newPostry(2) > 0) && (newPostry(2) < 26))
-            tmp = [tmp; controls_itry(1) controls_itry(2)];
+    if ((measurementLocation(1) - 1) < 1)
+        h = 100000000000000;
+    else
+        tmp = prior;
+        if (data == 1)
+            tmpLikelihood = getLikelihoodDoor(measurementLocation(1)-1, measurementLocation(2));
+        else
+            tmpLikelihood = getLikelihoodNotDoor(measurementLocation(1)-1, measurementLocation(2));
         end
+        tmpPost = (tmp .* tmpLikelihood);
+        tmpPost = tmpPost ./ (sum(sum(tmpPost)));
+        h = entropyOfBoard(tmpPost);
     end
-    controlsPotential = tmp;
-    bestInd = 1;
-    bestReduction = 0;
-    sameReduction = [];
-    sameInds = [];
-    indices = [];
-    entropyReductions = [];
-    for i=1:length(controlsPotential(:,1))%5
-        controls_i = controlsPotential(i,:);
-        newPos = measurementLocation + controls_i;
-        if ((newPos(1) > 0) && (newPos(1) < 26) && (newPos(2) > 0) && (newPos(2) < 26))
-            p_t_rj = prior(newPos(1), newPos(2)); %1/(totalSpaces - numUniqueVisited);
-            eds = entropy * p_t_rj + (1-p_t_rj) * 1;
-            indices = [indices, i];
-            entropyReductions = [entropyReductions, eds];
-            if eds < bestReduction
-                bestInd = i;
-                bestReduction = eds;
-                sameReduction = [];
-            else
-                if eds == bestReduction
-                    sameReduction(i) = i;
-                    sameInds = [sameInds, i-1, i];
-                end
-            end
+end
+
+function h = getEntDown(data)
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;
+    if ((measurementLocation(2) - 1) < 1)
+        h = 100000000000000;
+    else
+        tmp = prior;
+        if (data == 1)
+            tmpLikelihood = getLikelihoodDoor(measurementLocation(1), measurementLocation(2)-1);
+        else
+            tmpLikelihood = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2)-1);
         end
+        tmpPost = (tmp .* tmpLikelihood);
+        tmpPost = tmpPost ./ (sum(sum(tmpPost)));
+        h = entropyOfBoard(tmpPost);
     end
-    if (length(sameReduction) > 0)
-        sameReduction = unique(sameReduction);
-        lengthmat = length(sameInds);
-        randval = sameInds(randperm(lengthmat));
-        bestInd = randval(1);
+end
+
+function h = getEntUp(data)
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;
+    if ((measurementLocation(2) + 1) > 25)
+        h = 100000000000000;
+    else
+        tmp = prior;
+        if (data == 1)
+            tmpLikelihood = getLikelihoodDoor(measurementLocation(1), measurementLocation(2)+1);
+        else
+            tmpLikelihood = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2)+1);
+        end
+        tmpPost = (tmp .* tmpLikelihood);
+        tmpPost = tmpPost ./ (sum(sum(tmpPost)));
+        h = entropyOfBoard(tmpPost);
     end
-    bestInd;
-    bestReduction
-    entropyReductions
-    us = controlsPotential(bestInd, :);
+end
+
+function h = getEntRight(data)
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;
+    if ((measurementLocation(1) + 1) > 25)
+        h = 100000000000000;
+    else
+        tmp = prior;
+        if (data == 1)
+            tmpLikelihood = getLikelihoodDoor(measurementLocation(1)+1, measurementLocation(2));
+        else
+            tmpLikelihood = getLikelihoodNotDoor(measurementLocation(1)+1, measurementLocation(2));
+        end
+        tmpPost = (tmp .* tmpLikelihood);
+        tmpPost = tmpPost ./ (sum(sum(tmpPost)));
+        h = entropyOfBoard(tmpPost);
+    end
+end
+
+function h = getEntStay(data)
+    global entropy measurementLocation prior totalSpaces numUniqueVisited;
+    h = entropy;
 end
 
 function s = entropyBoard()
@@ -164,6 +234,18 @@ function s = entropyBoard()
   for i=1:25
       for j=1:25
           ijval = posterior(i, j);
+          total = total + ijval * log2(ijval);
+      end
+  end
+  s = -1*total;
+end
+
+function s = entropyOfBoard(b)
+  global posterior;
+  total = 0;
+  for i=1:25
+      for j=1:25
+          ijval = b(i, j);
           total = total + ijval * log2(ijval);
       end
   end
@@ -191,32 +273,12 @@ end
 
 function pr = getPriorDoor(i, j) %%%%%%%%%%% MAKE SURE THAT THIS IS ONLY USED WHEN CHECKING FOR NON_VISITED SPACE
   global prior;
-  pr = prior(i, j);%1/(totalSpaces - numUniqueVisited);
+  if ((i > 0) && (i < 26) && (j > 0) && (j < 26))
+      pr = prior(i, j);%1/(totalSpaces - numUniqueVisited);
+  else
+      pr = 0;
+  end
 end
-
-% function likelihood = getLikelihoodDoor()
-%   global doorLocation measurementLocation;
-%   %global mapMat measurementLocation doorLocation;
-%   rowdiff = abs(doorLocation(1) - measurementLocation(1));
-%   coldiff = abs(doorLocation(2) - measurementLocation(2));
-%   if ((rowdiff >= coldiff) && (rowdiff < 4))
-%       likelihood = 1/(rowdiff + 1);
-%   else
-%       likelihood = 0.01;
-%   end
-% end
-
-% function likelihood = getLikelihoodNotDoor()
-%   global doorLocation measurementLocation;
-%   %global mapMat measurementLocation doorLocation;
-%   rowdiff = abs(doorLocation(1) - measurementLocation(1));
-%   coldiff = abs(doorLocation(2) - measurementLocation(2));
-%   if ((rowdiff >= coldiff) && (rowdiff < 4))
-%       likelihood = 1-(1/(rowdiff + 1));
-%   else
-%       likelihood = 0.99;
-%   end
-% end
 
 function l = getLikelihoodDoor(r, c)
     tmp = ones(25, 25);
@@ -224,18 +286,24 @@ function l = getLikelihoodDoor(r, c)
     for i=0:3
         if (((r-i) > 0) && ((r+i)<26))
             for j=0:3
-                if (((j-i) > 0) && ((j+i)<26))
+                if (((c-j) > 0) && ((c+j)<26))
                     if (i == 3)
-                        tmp(r-i, j) = 1/4;
-                        tmp(r+i, j) = 1/4;
+                        tmp(r-i, c+j) = 1/4;
+                        tmp(r-i, c-j) = 1/4;
+                        tmp(r+i, c-j) = 1/4;
+                        tmp(r+i, c+j) = 1/4;
                     end
-                    if ((i == 2) && ((j > 1) && (j < 7)))
-                        tmp(r-i, j) = 1/3;
-                        tmp(r+i, j) = 1/3;
+                    if ((i == 2) && ((j == 0) || (j == 1) || (j == 2)))
+                        tmp(r-i, c+j) = 1/3;
+                        tmp(r-i, c-j) = 1/3;
+                        tmp(r+i, c-j) = 1/3;
+                        tmp(r+i, c+j) = 1/3;
                     end
-                    if ((i == 1) && ((j > 2) && (j < 6)))
-                        tmp(r-i, j) = 1/2;
-                        tmp(r+i, j) = 1/2;
+                    if ((i == 1) && ((j == 0) || (j == 1)))
+                        tmp(r-i, c+j) = 1/2;
+                        tmp(r-i, c-j) = 1/2;
+                        tmp(r+i, c-j) = 1/2;
+                        tmp(r+i, c+j) = 1/2;
                     end
                     if ((i == 0) && (j == 0))
                         tmp(r,c) = 1;
@@ -253,21 +321,27 @@ function l = getLikelihoodNotDoor(r, c)
     for i=0:3
         if (((r-i) > 0) && ((r+i)<26))
             for j=0:3
-                if (((j-i) > 0) && ((j+i)<26))
+                if (((c-j) > 0) && ((c+j)<26))
                     if (i == 3)
-                        tmp(r-i, j) = 3/4;
-                        tmp(r+i, j) = 3/4;
+                        tmp(r-i, c+j) = 3/4;
+                        tmp(r-i, c-j) = 3/4;
+                        tmp(r+i, c-j) = 3/4;
+                        tmp(r+i, c+j) = 3/4;
                     end
-                    if ((i == 2) && ((j > 1) && (j < 7)))
-                        tmp(r-i, j) = 2/3;
-                        tmp(r+i, j) = 2/3;
+                    if ((i == 2) && ((j == 0) || (j == 1) || (j == 2)))
+                        tmp(r-i, c+j) = 2/3;
+                        tmp(r-i, c-j) = 2/3;
+                        tmp(r+i, c-j) = 2/3;
+                        tmp(r+i, c+j) = 2/3;
                     end
-                    if ((i == 1) && ((j > 2) && (j < 6)))
-                        tmp(r-i, j) = 1/2;
-                        tmp(r+i, j) = 1/2;
+                    if ((i == 1) && ((j == 0) || (j == 1)))
+                        tmp(r-i, c+j) = 1/2;
+                        tmp(r-i, c-j) = 1/2;
+                        tmp(r+i, c-j) = 1/2;
+                        tmp(r+i, c+j) = 1/2;
                     end
                     if ((i == 0) && (j == 0))
-                        tmp(r,c) = 0;
+                        tmp(r,c) = 000000000000001;
                     end
                 end
             end
