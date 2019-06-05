@@ -82,6 +82,10 @@ xlim([-1 26]);
 ylim([-1 26]);
 xlabel("x");
 ylabel("y");
+hold on;
+plot(T_t(1,1), T_t(1,2),'.r','MarkerSize',40);
+plot(doorLocation(1), doorLocation(2),'.b','MarkerSize',40);
+hold off;
 
 %%%%%%%%%%%%%%%%%%%%%%% FUNCTIONS
 
