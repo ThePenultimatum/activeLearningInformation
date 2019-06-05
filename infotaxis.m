@@ -30,7 +30,7 @@ iters = 0;
 
 
 
-while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
+while entropy > 0.1 %iters < 100 %entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% take a measurement x
     
@@ -40,7 +40,7 @@ while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% update posterior p_x(theta)
     % this is the likelihood that the measurement x_i would turn out as the value we measured
     if (x_i == 0)
-        likelihood_i = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2));
+        likelihood_i = getLikelihoodNotDoor(measurementLocation(1), measurementLocation(2))
     else
         likelihood_i = getLikelihoodDoor(measurementLocation(1), measurementLocation(2));
     end
@@ -48,7 +48,7 @@ while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     posterior_i = (prior .* likelihood_i);
     posterior_i = posterior_i ./ (sum(sum(posterior_i)));
     posterior = posterior_i;
-    prior = posterior_i;
+    prior = posterior_i
     
     entropy_i = entropyBoard();
     
@@ -73,7 +73,7 @@ while entropy > 0.1 %iters < 50 %entropy > 9 %< 5 %entropy > epsilonEntropy
     iters = iters + 1;
 end
 
-prior
+prior;
 T_t;
 entropies;
 plot(T_t(:,1), T_t(:,2)); %%%%%%%%%%%%%%%%%%%%%% Plotting like x = rows, y = cols
@@ -348,7 +348,7 @@ end
 
 function l = getLikelihoodNotDoor(r, c)
     tmp = ones(25, 25).*99./100;
-    tmp(r,c) = 1;
+    tmp(r,c) = 0;
     for i=0:3
         if (((r-i) > 0) && ((r+i)<26))
             for j=0:3
@@ -372,7 +372,7 @@ function l = getLikelihoodNotDoor(r, c)
                         tmp(r+i, c+j) = 1/2;
                     end
                     if ((i == 0) && (j == 0))
-                        tmp(r,c) = 000000000000001;
+                        tmp(r,c) = 0;
                     end
                 end
             end
