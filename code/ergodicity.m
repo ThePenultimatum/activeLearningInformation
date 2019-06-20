@@ -50,6 +50,8 @@ for ki=0:K
     end
 end
 
+allHs = hsInit();
+
 gammaIJs = [];
 hs = [];
 fkxs = [];
@@ -83,23 +85,23 @@ for i=1:(length(bsToTry))
             ks = [xk; yk];
             %
             gammaIJ = gammaKs(xk+1, yk+1);
-            gammaIJs(xk+1, yk+1) = gammaIJ;
+            %gammaIJs(xk+1, yk+1) = gammaIJ;
             %
-            h = getHK(ks);
-            hs(xk+1, yk+1) = h;
+            h = allHs(xk+1, yk+1);%getHK(ks);
+            %hs(xk+1, yk+1) = h;
             %
             fkx = getFkx(trajectory, ks, h);
-            fkxs = [fkxs ; fkx];
+            %fkxs = [fkxs ; fkx];
             %
             ck = getCks(fkx);
-            cks(xk+1, yk+1) = ck;
+            %cks(xk+1, yk+1) = ck;
             %
             phik = getPhik(ks, h);
-            phiks(xk+1, yk+1) = phik;
+            %phiks(xk+1, yk+1) = phik;
             %
             %phik = getPhik(fkx);
             sumSoFar = sumSoFar + gammaIJ * (norm(ck - phik))^2;
-            epsilonProgress(xk+1, yk+1) = sumSoFar;
+            %epsilonProgress(xk+1, yk+1) = sumSoFar;
         end
     end
     
@@ -156,8 +158,8 @@ function fkx = getFkx(x, k, h)
     normalizer = 1/h;
     resi = normalizer * 1;
     
-    x1part = cos(k(1) * pi * x(1,:) / L);
-    x2part = cos(k(2) * pi * x(2,:) / L);
+    x1part = cos(k(1) * pi * x(:,1) / L);
+    x2part = cos(k(2) * pi * x(:,2) / L);
     tot = resi * (x1part .* x2part);
     fkx = tot;
 end
@@ -180,4 +182,16 @@ function phi_x = phi()
   newk = K + 1;
   xval = [linspace(0, L, newk); linspace(0, L, newk)];
   phi_x = (1/(sqrt(det(2*pi*sigma))))*exp(-0.5*transpose(xval-mu)*inv(sigma)*(xval-mu));
+end
+
+function hs = hsInit()
+    global K;
+    allHs = [];
+    for xk=0:K
+        for yk=0:K
+            ks = [xk; yk];
+            allHs(xk+1,yk+1) = getHK(ks);
+        end
+    end
+    hs = allHs;
 end
